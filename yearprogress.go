@@ -29,7 +29,9 @@ const (
 
 func main() {
 	format := "2006-01-02 15:04:05"
-	Start, _ = time.Parse(format, "2019-01-01 00:00:00")
+	ct = time.Now()
+	sformat := fmt.Sprintf("%v-01-01 00:00:00", ct.Year())	fmt.Println(sformat)
+	Start, _ = time.Parse(format, sformat)
 	http.HandleFunc("/", sayGen)
 	if err := http.ListenAndServe(GetPort(), nil); err != nil {
 		panic(err)
