@@ -48,7 +48,6 @@ func main() {
 	router.GET("/", sayGen)
 	router.GET("/len/:len", sayGen)
 	router.GET("/stat", stat)
-	// router.GET("/hello/:name", Hello)
 
 	if err := http.ListenAndServe(GetPort(), router); err != nil {
 		panic(err)
