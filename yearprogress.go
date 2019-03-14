@@ -6,7 +6,10 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 type Response struct {
@@ -14,13 +17,19 @@ type Response struct {
 	Str     string `json:"str"`
 }
 
+//StatData is a structure for statistics
+type StatData struct {
+	Visitors int `json:"visitors"`
+}
+
 var (
-	ct     time.Time          //current time
-	Start  time.Time          //start date of the year
-	wport  string    = "8085" //default api port, should be changed by ENV apram PORT
-	bg     string    = "▓"    //progress symbol
-	pr     string    = "░"    //background symbol
-	maxStr int       = 20     //max symbols for generated string
+	ct         time.Time          //current time
+	Start      time.Time          //start date of the year
+	wport      string    = "8085" //default api port, should be changed by ENV apram PORT
+	bg         string    = "▓"    //front progress symbol
+	pr         string    = "░"    //background progress symbol
+	maxStr     int       = 20     //max symbols for generated string
+	Statistics *StatData
 )
 
 const (
@@ -30,10 +39,18 @@ const (
 func main() {
 	format := "2006-01-02 15:04:05"
 	ct = time.Now()
-	sformat := fmt.Sprintf("%v-01-01 00:00:00", ct.Year())	fmt.Println(sformat)
+	sformat := fmt.Sprintf("%v-01-01 00:00:00", ct.Year())
 	Start, _ = time.Parse(format, sformat)
-	http.HandleFunc("/", sayGen)
-	if err := http.ListenAndServe(GetPort(), nil); err != nil {
+
+	Statistics = &StatData{}
+
+	router := httprouter.New()
+	router.GET("/", sayGen)
+	router.GET("/len/:len", sayGen)
+	router.GET("/stat", stat)
+	// router.GET("/hello/:name", Hello)
+
+	if err := http.ListenAndServe(GetPort(), router); err != nil {
 		panic(err)
 	}
 
@@ -52,10 +69,27 @@ func genStr(p, len int) string {
 	return s
 }
 
-func sayGen(w http.ResponseWriter, r *http.Request) {
+func stat(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+
+	st, err := json.Marshal(Statistics)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(st)
+}
+
+func sayGen(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+
+	Statistics.Visitors += 1
+	ls, err := strconv.Atoi(ps.ByName("len"))
+	if err != nil {
+		ls = maxStr
+	}
+
 	rt := ReturnPercent(Start)
 	ri := int(math.Round(rt))
-	str := genStr(ri, maxStr)
+	str := genStr(ri, ls)
 
 	resp := Response{
 		Percent: ri,
@@ -67,6 +101,8 @@ func sayGen(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	w.Write(js)
 }
 
