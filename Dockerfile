@@ -1,5 +1,4 @@
-FROM golang:alpine as builder
-# RUN apk update && apk add git && go get gopkg.in/natefinch/lumberjack.v2
+FROM golang:latest as builder
 
 WORKDIR /yprog
 ENV CGO_ENABLED=0
