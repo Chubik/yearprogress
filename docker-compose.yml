@@ -4,8 +4,6 @@ services:
   app:
     image: yprog:latest
     build: .
-    #    volumes:
-    #- .:/gener
     ports:
        - "8085:8085"
 
