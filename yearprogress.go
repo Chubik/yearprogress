@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -17,32 +18,21 @@ type Response struct {
 	Str     string `json:"str"`
 }
 
-//StatData is a structure for statistics
 type StatData struct {
 	Visitors int `json:"visitors"`
 }
 
 var (
-	ct         time.Time          //current time
-	Start      time.Time          //start date of the year
-	wport      string    = "8085" //default api port, should be changed by ENV apram PORT
-	bg         string    = "▓"    //front progress symbol
-	pr         string    = "░"    //background progress symbol
-	maxStr     int       = 20     //max symbols for generated string
-	Statistics *StatData
-)
-
-const (
-	yDays = 365 //days in year
+	currentYear       int
+	progressBarLength int    = 20
+	bg                string = "▓"
+	pr                string = "░"
+	statistics        *StatData
 )
 
 func main() {
-	format := "2006-01-02 15:04:05"
-	ct = time.Now()
-	sformat := fmt.Sprintf("%v-01-01 00:00:00", ct.Year())
-	Start, _ = time.Parse(format, sformat)
-
-	Statistics = &StatData{}
+	currentYear = time.Now().Year()
+	statistics = &StatData{}
 
 	router := httprouter.New()
 	router.GET("/", sayGen)
@@ -52,25 +42,24 @@ func main() {
 	if err := http.ListenAndServe(GetPort(), router); err != nil {
 		panic(err)
 	}
-
 }
 
-func genStr(p, len int) string {
-	s := ""
-	f := (p * len) / 100
-	for i := 0; i < len; i++ {
-		if f <= i {
-			s += pr
+func genStr(p, length int) string {
+	var builder strings.Builder
+	filled := (p * length) / 100
+
+	for i := 0; i < length; i++ {
+		if i < filled {
+			builder.WriteString(bg)
 		} else {
-			s += bg
+			builder.WriteString(pr)
 		}
 	}
-	return s
+	return builder.String()
 }
 
 func stat(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-
-	st, err := json.Marshal(Statistics)
+	st, err := json.Marshal(statistics)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -79,19 +68,17 @@ func stat(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 }
 
 func sayGen(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
-	Statistics.Visitors += 1
+	statistics.Visitors++
 	ls, err := strconv.Atoi(ps.ByName("len"))
 	if err != nil {
-		ls = maxStr
+		ls = progressBarLength
 	}
 
-	rt := ReturnPercent(Start)
-	ri := int(math.Round(rt))
-	str := genStr(ri, ls)
+	percent := yearProgressPercentage()
+	str := genStr(percent, ls)
 
 	resp := Response{
-		Percent: ri,
+		Percent: percent,
 		Str:     str,
 	}
 	js, err := json.Marshal(resp)
@@ -105,25 +92,17 @@ func sayGen(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	w.Write(js)
 }
 
-func PercentOf(current int, all int) float64 {
-	percent := (float64(current) * float64(100)) / float64(all)
-	return percent
+func yearProgressPercentage() int {
+	startOfYear := time.Date(currentYear, time.January, 1, 0, 0, 0, 0, time.UTC)
+	now := time.Now()
+	daysPassed := now.Sub(startOfYear).Hours() / 24
+	return int(math.Round((daysPassed / 365) * 100))
 }
 
-func ReturnPercent(start time.Time) float64 {
-	ct = time.Now()
-	diff := ct.Sub(start)
-	dLeft := int(diff.Hours() / 24)
-	perc := PercentOf(dLeft, yDays)
-	return perc
-}
-
-// Get the Port from the environment so we can run on Heroku
 func GetPort() string {
-	var port = os.Getenv("PORT")
-	// Set a default port if there is nothing in the environment
+	port := os.Getenv("PORT")
 	if port == "" {
-		port = wport
+		port = "8085"
 		fmt.Println("INFO: No PORT environment variable detected, defaulting to " + port)
 	}
 	return ":" + port
