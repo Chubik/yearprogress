@@ -1,11 +1,14 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
+	"flag"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
-	"os"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -28,9 +31,30 @@ var (
 	bg                string = "▓"
 	pr                string = "░"
 	statistics        *StatData
+	cpem, kpem        string
+)
+
+const (
+	certPath = "/home/gentle/cert/"
 )
 
 func main() {
+
+	cpem, err := url.JoinPath(certPath, "cert.pem")
+	if err != nil {
+		log.Fatal(err)
+	}
+	kpem, err := url.JoinPath(certPath, "key.pem")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	useTLS := flag.Bool("tls", false, "Enable TLS")
+	certFile := flag.String("cert", cpem, "Path to SSL certificate")
+	keyFile := flag.String("key", kpem, "Path to SSL key")
+	port := flag.Int("port", 8085, "Port to listen on")
+	flag.Parse()
+
 	currentYear = time.Now().Year()
 	statistics = &StatData{}
 
@@ -39,9 +63,24 @@ func main() {
 	router.GET("/len/:len", sayGen)
 	router.GET("/stat", stat)
 
-	if err := http.ListenAndServe(GetPort(), router); err != nil {
-		panic(err)
+	addr := fmt.Sprintf(":%d", *port)
+	server := &http.Server{
+		Addr:    addr,
+		Handler: router,
 	}
+	if *useTLS {
+		config := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+		server.TLSConfig = config
+
+		log.Printf("Starting server with TLS on port %d...\n", *port)
+		log.Fatal(server.ListenAndServeTLS(*certFile, *keyFile))
+	} else {
+		log.Printf("Starting server without TLS on port %d...\n", *port)
+		log.Fatal(server.ListenAndServe())
+	}
+
 }
 
 func genStr(p, length int) string {
@@ -97,13 +136,4 @@ func yearProgressPercentage() int {
 	now := time.Now()
 	daysPassed := now.Sub(startOfYear).Hours() / 24
 	return int(math.Round((daysPassed / 365) * 100))
-}
-
-func GetPort() string {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8085"
-		fmt.Println("INFO: No PORT environment variable detected, defaulting to " + port)
-	}
-	return ":" + port
 }
