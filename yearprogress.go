@@ -64,6 +64,7 @@ func main() {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(CORS)
 
 	r.Get("/", sayGen)
 	r.Get("/len/{len}", sayGen)
@@ -143,4 +144,11 @@ func yearProgressPercentage() int {
 	now := time.Now()
 	daysPassed := now.Sub(startOfYear).Hours() / 24
 	return int(math.Round((daysPassed / 365) * 100))
+}
+
+func CORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		next.ServeHTTP(w, r)
+	})
 }
