@@ -13,7 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/julienschmidt/httprouter"
+	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
 )
 
 type Response struct {
@@ -35,7 +36,7 @@ var (
 )
 
 const (
-	certPath = "/home/gentle/cert/"
+	certPath = "./cert/"
 )
 
 func main() {
@@ -58,15 +59,20 @@ func main() {
 	currentYear = time.Now().Year()
 	statistics = &StatData{}
 
-	router := httprouter.New()
-	router.GET("/", sayGen)
-	router.GET("/len/:len", sayGen)
-	router.GET("/stat", stat)
+	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
+	r.Get("/", sayGen)
+	r.Get("/len/{len}", sayGen)
+	r.Get("/stat", stat)
 
 	addr := fmt.Sprintf(":%d", *port)
 	server := &http.Server{
 		Addr:    addr,
-		Handler: router,
+		Handler: r,
 	}
 	if *useTLS {
 		config := &tls.Config{
@@ -97,7 +103,7 @@ func genStr(p, length int) string {
 	return builder.String()
 }
 
-func stat(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func stat(w http.ResponseWriter, r *http.Request) {
 	st, err := json.Marshal(statistics)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -106,9 +112,10 @@ func stat(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	w.Write(st)
 }
 
-func sayGen(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func sayGen(w http.ResponseWriter, r *http.Request) {
 	statistics.Visitors++
-	ls, err := strconv.Atoi(ps.ByName("len"))
+	lsStr := chi.URLParam(r, "len")
+	ls, err := strconv.Atoi(lsStr)
 	if err != nil {
 		ls = progressBarLength
 	}
