@@ -1,4 +1,4 @@
-version: '2'
+version: '3.8'
 
 services:
   app:
@@ -10,6 +10,7 @@ services:
       - /etc/ssl:/etc/ssl:ro
     command:
       [
+        "/yprog/yprog",
         "-tls=true",
         "-cert=/etc/ssl/cert.pem",
         "-key=/etc/ssl/key.pem"
