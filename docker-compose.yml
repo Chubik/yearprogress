@@ -12,6 +12,6 @@ services:
       [
         "/yprog/yprog",
         "-tls=true",
-        "-cert=/etc/ssl/cert.pem",
-        "-key=/etc/ssl/key.pem"
+        "-cert=/etc/ssl/cert_vchub_net.pem",
+        "-key=/etc/ssl/key_vchub_net.pem"
       ]
