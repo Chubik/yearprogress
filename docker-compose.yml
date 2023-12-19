@@ -3,7 +3,7 @@ version: '3.8'
 services:
   app:
     image: yprog:latest
-    image_name: yearprogress
+    container_name: yearprogress
     build: .
     ports:
       - "8085:8085"
