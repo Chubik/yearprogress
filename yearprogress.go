@@ -90,6 +90,7 @@ func main() {
 
 }
 
+// genStr generates a string that represents a progress bar
 func genStr(p, length int) string {
 	var builder strings.Builder
 	filled := (p * length) / 100
@@ -104,6 +105,7 @@ func genStr(p, length int) string {
 	return builder.String()
 }
 
+// stat returns statistics data as JSON
 func stat(w http.ResponseWriter, r *http.Request) {
 	st, err := json.Marshal(statistics)
 	if err != nil {
@@ -113,6 +115,7 @@ func stat(w http.ResponseWriter, r *http.Request) {
 	w.Write(st)
 }
 
+// sayGen generates and returns the progress bar as JSON
 func sayGen(w http.ResponseWriter, r *http.Request) {
 	statistics.Visitors++
 	lsStr := chi.URLParam(r, "len")
@@ -139,13 +142,17 @@ func sayGen(w http.ResponseWriter, r *http.Request) {
 	w.Write(js)
 }
 
+// yearProgressPercentage calculates the percentage of the year that has passed
 func yearProgressPercentage() int {
 	startOfYear := time.Date(currentYear, time.January, 1, 0, 0, 0, 0, time.UTC)
+	endOfYear := time.Date(currentYear+1, time.January, 1, 0, 0, 0, 0, time.UTC)
 	now := time.Now()
+	daysInYear := endOfYear.Sub(startOfYear).Hours() / 24
 	daysPassed := now.Sub(startOfYear).Hours() / 24
-	return int(math.Round((daysPassed / 365) * 100))
+	return int(math.Round((daysPassed / daysInYear) * 100))
 }
 
+// CORS adds CORS headers to the response
 func CORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
